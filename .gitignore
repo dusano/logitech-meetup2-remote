@@ -1,0 +1,6 @@
+.claude/
+
+dist/
+plain_modules/
+
+codeplain.log

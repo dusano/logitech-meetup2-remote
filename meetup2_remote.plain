@@ -1,0 +1,89 @@
+---
+description: MeetUp2 Remote is a native macOS app that controls the zoom and pan/tilt of a connected Logitech MeetUp 2 camera over USB.
+---
+
+***definitions***
+
+- :MeetUp2Remote: is a native macOS menu bar app that controls the zoom and pan/tilt of a connected Logitech MeetUp 2 camera over USB.
+  - It lives in the macOS menu bar; clicking its menu bar icon opens a small panel with the camera controls.
+  - It has no Dock icon.
+  - It controls a single MeetUp 2 at a time; when several are attached, it controls the first one it detects and ignores the others.
+
+- :MeetUpCamera: represents the Logitech MeetUp 2 camera attached to the Mac over USB and controlled by :MeetUp2Remote:. :MeetUpCamera: has:
+  - Connection state - connected or disconnected (required)
+  - Current zoom value - read from the camera (available while connected)
+  - Current pan value - read from the camera (available while connected)
+  - Current tilt value - read from the camera (available while connected)
+  - Each of zoom, pan, and tilt has a valid range with a minimum and maximum reported by the camera itself.
+
+- :ControlPanel: is the small panel of :MeetUp2Remote: that opens from the menu bar icon and contains the controls for :MeetUpCamera:.
+
+- :CameraControlLink: is the component of :MeetUp2Remote: that reads and adjusts the zoom, pan, and tilt controls of :MeetUpCamera: over USB.
+
+***implementation reqs***
+
+- :Implementation: should be in Swift.
+
+- :Implementation: should target macOS 14 as the minimum deployment version.
+
+- :Implementation: should use SwiftUI for the user interface, with the menu bar icon and :ControlPanel: implemented as a MenuBarExtra scene.
+
+- :CameraControlLink: should communicate with :MeetUpCamera: using Apple's IOKit USB APIs, sending standard USB Video Class (UVC) control requests (GET_CUR, GET_MIN, GET_MAX, SET_CUR) to the camera's video control interface for the zoom, pan, and tilt controls. No third-party USB or UVC libraries should be used.
+
+- :Implementation: should be a Swift Package Manager project with a Package.swift manifest, built with `swift build` and tested with `swift test`; the app is an executable target.
+
+- :Implementation: should be organized in two layers: a device layer containing :CameraControlLink: and camera detection behind a Swift protocol, and a UI layer containing the SwiftUI views and a single observable view model that mediates between :ControlPanel: and the device layer.
+  - The protocol seam allows substituting a fake camera implementation in tests.
+
+- Camera detection should identify :MeetUpCamera: by matching USB vendor ID 0x046D (Logitech) and a USB product name containing "MeetUp".
+  - Detection should enumerate USB devices via IOKit service matching on the `IOUSBHostDevice` service class (the class modern macOS registers for USB devices).
+  - The vendor ID is read from the device's IORegistry property `idVendor` and the product name from the IORegistry property `USB Product Name` (via `IORegistryEntryCreateCFProperty`); the registry entry name must not be used for matching.
+  - For reference, the live device reports `USB Product Name` = "Logi MeetUp 2" and `idVendor` = 0x046D.
+
+- :CameraControlLink: must perform real UVC control transfers against the camera's video control interface for every read (GET_CUR, GET_MIN, GET_MAX) and write (SET_CUR) of zoom, pan, and tilt.
+  - Returning simulated, hard-coded, or placeholder values in place of actual device communication is not acceptable in the real device-layer implementation; only the fake camera used by tests may simulate values.
+
+- :UnitTests: should use the Swift Testing framework (`import Testing`, `@Test` functions) and live in the package's test target.
+
+- :UnitTests: should exercise the view model and control logic against a fake camera implementation substituted through the device-layer protocol; they must not touch IOKit or real USB hardware.
+
+***test reqs***
+
+- :ConformanceTests: should be implemented using the Swift Testing framework (`import Testing`, `@Test` functions).
+
+- :ConformanceTests: will be run using the `swift test` command.
+
+- :ConformanceTests: must be implemented and executed - do not skip tests.
+
+- :ConformanceTests: must not require a real camera, IOKit access, or a display; they exercise the specified behavior through the device-layer protocol using the fake camera implementation.
+
+***functional specs***
+
+- :MeetUp2Remote: has an entry point. When launched, its icon appears in the macOS menu bar and no Dock icon is shown.
+  - Clicking the menu bar icon opens :ControlPanel:; clicking it again closes :ControlPanel:.
+
+- At launch, :MeetUp2Remote: detects the first attached Logitech MeetUp 2 and treats it as the :MeetUpCamera:.
+  - :ControlPanel: displays the connection state of :MeetUpCamera:: "Connected" when a camera is found, "No camera found" otherwise.
+  - Detection happens only at launch; attaching or detaching a camera while :MeetUp2Remote: is running takes effect only after the app is restarted.
+
+- :CameraControlLink: reads the current zoom, pan, and tilt values of the connected :MeetUpCamera:, together with the valid range (minimum and maximum) of each.
+  - When a read or adjustment command fails while the camera is connected, the failure is silently ignored: no error is shown and the last known values remain displayed.
+
+- While :MeetUpCamera: is connected, :ControlPanel: displays its current zoom, pan, and tilt values as provided by :CameraControlLink:.
+  - While no camera is connected, no values are displayed.
+
+- :ControlPanel: contains a zoom slider.
+  - The slider spans the zoom range reported by :CameraControlLink:.
+  - The slider position reflects the current zoom value of :MeetUpCamera:.
+  - Moving the slider sets the zoom of :MeetUpCamera: to the selected absolute value via :CameraControlLink:.
+  - The slider is disabled while no camera is connected.
+
+- :ControlPanel: contains a directional pad with up, down, left, and right buttons.
+  - Pressing left or right changes the pan of :MeetUpCamera: by one step in that direction via :CameraControlLink:.
+  - Pressing up or down changes the tilt of :MeetUpCamera: by one step in that direction via :CameraControlLink:.
+  - One step is 1/20 of the valid range of the control being changed, as reported by :CameraControlLink:.
+  - A step that would exceed the valid range is clamped to the range boundary.
+  - The displayed pan and tilt values update after each press.
+  - The directional pad is disabled while no camera is connected.
+
+- :ControlPanel: arranges its elements vertically, top to bottom: the connection state, the current zoom, pan, and tilt values, the zoom slider, and the directional pad.
