@@ -34,6 +34,7 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 
 - :Implementation: should be organized in two layers: a device layer containing :CameraControlLink: and camera detection behind a Swift protocol, and a UI layer containing the SwiftUI views and a single observable view model that mediates between :ControlPanel: and the device layer.
   - The protocol seam allows substituting a fake camera implementation in tests.
+  - The layers are introduced incrementally: each layer, protocol, and component exists only from the first functionality that needs it onward; earlier functionalities do not scaffold them in advance.
 
 - Camera detection should identify :MeetUpCamera: by matching USB vendor ID 0x046D (Logitech) and a USB product name containing "MeetUp".
   - Detection is successful only when the full communication chain is acquired: the matched USB device, its video control interface, and the camera terminal unit ID discovered per the UVC protocol resource referenced by the :CameraControlLink: requirement; matching the device alone does not count as connected.
@@ -66,6 +67,7 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 ***functional specs***
 
 - :MeetUp2Remote: has an entry point. When launched, its icon appears in the macOS menu bar and no Dock icon is shown.
+
   - Clicking the menu bar icon opens :ControlPanel:; clicking it again closes :ControlPanel:.
 
 - At launch, :MeetUp2Remote: detects the first attached Logitech MeetUp 2 and treats it as the :MeetUpCamera:.
