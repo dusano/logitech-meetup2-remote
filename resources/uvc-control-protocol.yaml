@@ -1,0 +1,64 @@
+# UVC control protocol details for zoom and pan/tilt on the Logitech MeetUp 2.
+# How the device layer addresses the camera's USB Video Class control interface.
+
+video_control_interface:
+  usb_interface_class: 14        # CC_VIDEO
+  usb_interface_subclass: 1      # SC_VIDEOCONTROL
+  access: >
+    Obtain an IOKit USB interface interface for the video control interface
+    (IOCreatePlugInInterfaceForService + QueryInterface for IOUSBInterfaceInterface),
+    open it, and issue class-specific control requests through it.
+
+requests:
+  bmRequestType:
+    read: 0xA1                   # device-to-host, class, interface
+    write: 0x21                  # host-to-device, class, interface
+  bRequest:
+    SET_CUR: 0x01
+    GET_CUR: 0x81
+    GET_MIN: 0x82
+    GET_MAX: 0x83
+
+controls:
+  zoom:
+    selector: 0x0B               # CT_ZOOM_ABSOLUTE_CONTROL
+    length_bytes: 2
+    value: unsigned 2-byte zoom position
+  pan_tilt:
+    selector: 0x0D               # CT_PANTILT_ABSOLUTE_CONTROL
+    length_bytes: 8
+    value: pan then tilt, each a 4-byte signed integer
+
+macos_access:
+  interface_discovery: >
+    Find the video control interface as a child service of the matched USB
+    device in the IOService plane: iterate the device's children of class
+    IOUSBHostInterface and select the one whose IORegistry properties report
+    bInterfaceClass == 14 and bInterfaceSubClass == 1. Read its
+    bInterfaceNumber property for the wIndex low byte.
+  interface_interface: >
+    Create the plug-in with IOCreatePlugInInterfaceForService using
+    kIOUSBInterfaceUserClientTypeID, then QueryInterface for
+    IOUSBInterfaceInterface (version 190 or later, e.g. 300).
+  exclusive_access_workaround: >
+    Do NOT require USBInterfaceOpen to succeed. macOS's own UVC driver
+    (AppleUSBVDC) holds the video control interface, so USBInterfaceOpen
+    returns kIOReturnExclusiveAccess (0xE00002C5). Class-specific control
+    requests still work without opening the interface: send them with
+    ControlRequest (not DeviceRequest) on pipe reference 0 (the default
+    control endpoint). Treat an exclusive-access open failure as non-fatal
+    and proceed to issue control requests.
+  unit_id_fallback: >
+    If parsing the class-specific VC descriptors is not feasible, probe unit
+    IDs 1 through 4 with a GET_MIN request for the zoom control and use the
+    first unit ID that returns success.
+
+addressing:
+  wValue: control selector shifted left by 8 bits (selector << 8)
+  wIndex: >
+    camera terminal unit ID shifted left by 8 bits, OR-ed with the video
+    control interface number ((unit_id << 8) | interface_number)
+  unit_id_discovery: >
+    Parse the camera terminal unit ID from the video control interface's
+    class-specific descriptors (the Input Terminal descriptor of terminal
+    type camera, wTerminalType 0x0201 ITT_CAMERA).

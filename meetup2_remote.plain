@@ -36,12 +36,17 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - The protocol seam allows substituting a fake camera implementation in tests.
 
 - Camera detection should identify :MeetUpCamera: by matching USB vendor ID 0x046D (Logitech) and a USB product name containing "MeetUp".
+  - Detection is successful only when the full communication chain is acquired: the matched USB device, its video control interface, and the camera terminal unit ID discovered per the UVC protocol resource referenced by the :CameraControlLink: requirement; matching the device alone does not count as connected.
   - Detection should enumerate USB devices via IOKit service matching on the `IOUSBHostDevice` service class (the class modern macOS registers for USB devices).
   - The vendor ID is read from the device's IORegistry property `idVendor` and the product name from the IORegistry property `USB Product Name` (via `IORegistryEntryCreateCFProperty`); the registry entry name must not be used for matching.
   - For reference, the live device reports `USB Product Name` = "Logi MeetUp 2" and `idVendor` = 0x046D.
 
 - :CameraControlLink: must perform real UVC control transfers against the camera's video control interface for every read (GET_CUR, GET_MIN, GET_MAX) and write (SET_CUR) of zoom, pan, and tilt.
   - Returning simulated, hard-coded, or placeholder values in place of actual device communication is not acceptable in the real device-layer implementation; only the fake camera used by tests may simulate values.
+  - The interface addressing, request codes, control selectors, value layouts, and unit-ID discovery are defined in [uvc-control-protocol.yaml](resources/uvc-control-protocol.yaml).
+
+- The device layer should log every UVC operation and its outcome to standard error for diagnostics: the request kind, control selector, unit ID, IOKit result code, and the raw values read or written.
+  - Diagnostic logging of failures on standard error is required, never suppressed.
 
 - :UnitTests: should use the Swift Testing framework (`import Testing`, `@Test` functions) and live in the package's test target.
 
@@ -56,6 +61,7 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 - :ConformanceTests: must be implemented and executed - do not skip tests.
 
 - :ConformanceTests: must not require a real camera, IOKit access, or a display; they exercise the specified behavior through the device-layer protocol using the fake camera implementation.
+  - Exception: acceptance tests that explicitly state they run against a physical Logitech MeetUp 2 use the real device layer over USB; they require the camera to be attached and fail (never skip) when it is absent.
 
 ***functional specs***
 
@@ -67,7 +73,11 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - Detection happens only at launch; attaching or detaching a camera while :MeetUp2Remote: is running takes effect only after the app is restarted.
 
 - :CameraControlLink: reads the current zoom, pan, and tilt values of the connected :MeetUpCamera:, together with the valid range (minimum and maximum) of each.
-  - When a read or adjustment command fails while the camera is connected, the failure is silently ignored: no error is shown and the last known values remain displayed.
+  - When a read or adjustment command fails while the camera is connected, :ControlPanel: shows a short error message and the values are re-read from the camera so the display stays truthful.
+
+  ***acceptance tests***
+
+  - With a physical Logitech MeetUp 2 attached over USB, :CameraControlLink: reads zoom, pan, and tilt from the live device (not from the fake camera): each control's reported range has a minimum strictly smaller than its maximum, and each current value lies within its reported range.
 
 - While :MeetUpCamera: is connected, :ControlPanel: displays its current zoom, pan, and tilt values as provided by :CameraControlLink:.
   - While no camera is connected, no values are displayed.
