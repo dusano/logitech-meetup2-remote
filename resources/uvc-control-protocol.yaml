@@ -20,14 +20,34 @@ requests:
     GET_MAX: 0x83
 
 controls:
+  byte_order: >
+    All multi-byte UVC values are little-endian (standard USB byte order),
+    both in requests (SET_CUR payload) and responses (GET_* payloads).
   zoom:
     selector: 0x0B               # CT_ZOOM_ABSOLUTE_CONTROL
     length_bytes: 2
-    value: unsigned 2-byte zoom position
-  pan_tilt:
-    selector: 0x0D               # CT_PANTILT_ABSOLUTE_CONTROL
-    length_bytes: 8
-    value: pan then tilt, each a 4-byte signed integer
+    value: unsigned 2-byte little-endian zoom position
+  pan_tilt_relative:
+    selector: 0x0E               # CT_PANTILT_RELATIVE_CONTROL - the control the MeetUp 2 actually implements
+    length_bytes: 4
+    value: >
+      byte 0: pan direction as a signed byte (1 = clockwise/right, 0xFF = -1 =
+      counter-clockwise/left, 0 = stop); byte 1: pan speed as an unsigned byte;
+      byte 2: tilt direction as a signed byte (1 = up, 0xFF = -1 = down,
+      0 = stop); byte 3: tilt speed as an unsigned byte.
+      The MeetUp 2 reports speed 1 as both minimum and maximum.
+    movement_pulse: >
+      A short movement pulse is: SET_CUR with the chosen direction and speed 1,
+      wait a short fixed duration (on the order of 100-300 ms), then SET_CUR
+      with direction 0 (stop) for that axis. The camera enforces its own
+      mechanical limits.
+  pan_tilt_absolute_quirk: >
+    Verified against the live device: CT_PANTILT_ABSOLUTE_CONTROL (0x0D)
+    on the MeetUp 2 is non-functional for position reporting - GET_CUR always
+    returns all zeros regardless of the camera's actual orientation, and the
+    reported range (0..255) is not a real position range. Do not use the
+    absolute control for pan/tilt; use pan_tilt_relative, and do not display
+    a pan/tilt position (the device does not report one).
 
 macos_access:
   interface_discovery: >
@@ -48,6 +68,43 @@ macos_access:
     ControlRequest (not DeviceRequest) on pipe reference 0 (the default
     control endpoint). Treat an exclusive-access open failure as non-fatal
     and proceed to issue control requests.
+  iterator_handle_lifetime: >
+    When looping over an io_iterator_t, each service handle must be released
+    only after that iteration's work is fully done. Never combine a deferred
+    release with reassigning the loop variable at the end of the body: the
+    deferred release then frees the NEWLY fetched handle before it is used,
+    which makes its registry properties unreadable (empty name, vendor
+    0x0000) and silently truncates enumeration after the first device -
+    whether detection works then depends only on device order. Fetch the
+    next handle at the top of each iteration (for example
+    "while case let device = IOIteratorNext(it), device != 0 {
+    defer { IOObjectRelease(device) } ... }") so every deferred release is
+    scoped to the handle fetched in that same iteration.
+  lifecycle_and_robustness: >
+    Create the interface access exactly once per process and reuse it for
+    every subsequent request; never create and destroy plug-ins per request.
+    After QueryInterface succeeds, release the CFPlugIn (keep only the
+    queried interface interface). If plug-in creation fails with
+    kIOReturnNoResources, retry up to 3 times with a 100 ms pause before
+    falling back - the failure is often transient contention with system
+    USB daemons. Read the child interface's identity properties
+    (bInterfaceClass, bInterfaceSubClass, bInterfaceNumber) directly with
+    IORegistryEntryCreateCFProperty on the interface registry entry.
+  plugin_fallback: >
+    IOCreatePlugInInterfaceForService with kIOUSBInterfaceUserClientTypeID on
+    the interface service can fail with kIOReturnNoResources (-536870210,
+    0xE00002BE) in some process environments (observed under the arm64e Swift
+    test runner) even though it succeeds in a plain app process. When it
+    fails, fall back to the DEVICE level: create the plug-in on the matched
+    USB device service with kIOUSBDeviceUserClientTypeID, QueryInterface for
+    IOUSBDeviceInterface, and send the same class-interface control requests
+    via its DeviceRequest() call. No USBDeviceOpen is required for control
+    requests on the default pipe; if open is attempted and fails with
+    exclusive access, proceed anyway. The request fields (bmRequestType,
+    bRequest, wValue, wIndex including the interface number in the low byte)
+    are identical in both paths, so the fallback only changes which IOKit
+    object carries the request. Detection succeeds when either path yields a
+    working request channel.
   unit_id_fallback: >
     If parsing the class-specific VC descriptors is not feasible, probe unit
     IDs 1 through 4 with a GET_MIN request for the zoom control and use the

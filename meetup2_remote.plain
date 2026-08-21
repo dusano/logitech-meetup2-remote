@@ -46,7 +46,9 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - Returning simulated, hard-coded, or placeholder values in place of actual device communication is not acceptable in the real device-layer implementation; only the fake camera used by tests may simulate values.
   - The interface addressing, request codes, control selectors, value layouts, and unit-ID discovery are defined in [uvc-control-protocol.yaml](resources/uvc-control-protocol.yaml).
 
-- The device layer should log every UVC operation and its outcome to standard error for diagnostics: the request kind, control selector, unit ID, IOKit result code, and the raw values read or written.
+- The device layer should log every UVC operation and its outcome to standard error for diagnostics: the request kind, control selector, unit ID, IOKit result code, the raw byte buffer in hexadecimal, and the parsed values read or written.
+  - Every step of the camera detection chain is also logged with its outcome and IOKit result code: device matching (matched name and vendor ID), video control interface lookup, interface plug-in creation and open, and camera terminal unit ID discovery (including each probed unit ID and its result when the probe fallback is used).
+  - When any detection step fails, the logged failure names the step, so a "not connected" outcome is always attributable to a specific step.
   - Diagnostic logging of failures on standard error is required, never suppressed.
 
 - :UnitTests: should use the Swift Testing framework (`import Testing`, `@Test` functions) and live in the package's test target.
@@ -74,12 +76,16 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - :ControlPanel: displays the connection state of :MeetUpCamera:: "Connected" when a camera is found, "No camera found" otherwise.
   - Detection happens only at launch; attaching or detaching a camera while :MeetUp2Remote: is running takes effect only after the app is restarted.
 
-- :CameraControlLink: reads the current zoom, pan, and tilt values of the connected :MeetUpCamera:, together with the valid range (minimum and maximum) of each.
-  - When a read or adjustment command fails while the camera is connected, :ControlPanel: shows a short error message and the values are re-read from the camera so the display stays truthful.
+  ***acceptance tests***
+
+  - With a physical Logitech MeetUp 2 attached over USB, detection enumerates the complete USB device list, regardless of the order in which devices are yielded: the number of devices probed equals the number of USB devices an independent enumeration reports, every probed device has readable identity properties (a probe reporting an empty product name together with vendor ID 0x0000 is a failure), and the MeetUp 2 is found even when it is not the first device yielded.
+
+- :CameraControlLink: reads the current zoom value of the connected :MeetUpCamera:, together with its valid range (minimum and maximum), and can issue relative pan and tilt movement commands.
+  - When a read or adjustment command fails while the camera is connected, :ControlPanel: shows a short error message and the zoom value is re-read from the camera so the display stays truthful.
 
   ***acceptance tests***
 
-  - With a physical Logitech MeetUp 2 attached over USB, :CameraControlLink: reads zoom, pan, and tilt from the live device (not from the fake camera): each control's reported range has a minimum strictly smaller than its maximum, and each current value lies within its reported range.
+  - With a physical Logitech MeetUp 2 attached over USB, :CameraControlLink: reads the zoom value and range from the live device (not from the fake camera): the zoom range minimum is strictly smaller than its maximum, the current zoom value lies within the range, and the device reports the relative pan/tilt movement control as supported.
 
 - While :MeetUpCamera: is connected, :ControlPanel: displays its current zoom, pan, and tilt values as provided by :CameraControlLink:.
   - While no camera is connected, no values are displayed.
