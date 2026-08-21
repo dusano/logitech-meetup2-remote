@@ -104,3 +104,9 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - The directional pad is disabled while no camera is connected.
 
 - :ControlPanel: arranges its elements vertically, top to bottom: the connection state, the current zoom value, the zoom slider, and the directional pad.
+
+- :MeetUp2Remote: can be packaged into a distributable macOS app bundle by running the `package.sh` script at the package root.
+  - The script performs a release build and produces `release/MeetUp2Remote.app`, containing the release binary and the app's Info.plist, and a compressed `release/MeetUp2Remote.zip` of the bundle.
+  - The bundle is signed with an ad-hoc code signature.
+  - Re-running the script replaces any previous contents of the `release` folder.
+  - When any packaging step fails, the script exits with the failing step's error code and removes the `release` folder contents created during that run, so no partial output remains.
