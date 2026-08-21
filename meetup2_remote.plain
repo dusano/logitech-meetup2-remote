@@ -116,3 +116,4 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - The bundle is signed with an ad-hoc code signature.
   - Re-running the script replaces any previous contents of the `release` folder.
   - When any packaging step fails, the script exits with the failing step's error code and removes the `release` folder contents created during that run, so no partial output remains.
+  - The script prints each packaging step and its outcome to standard error; when a step fails, that step's command output is included, so the failure cause is visible to any caller capturing the script's output.
