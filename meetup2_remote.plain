@@ -12,13 +12,12 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 - :MeetUpCamera: represents the Logitech MeetUp 2 camera attached to the Mac over USB and controlled by :MeetUp2Remote:. :MeetUpCamera: has:
   - Connection state - connected or disconnected (required)
   - Current zoom value - read from the camera (available while connected)
-  - Current pan value - read from the camera (available while connected)
-  - Current tilt value - read from the camera (available while connected)
-  - Each of zoom, pan, and tilt has a valid range with a minimum and maximum reported by the camera itself.
+  - Zoom has a valid range with a minimum and maximum reported by the camera itself.
+  - Pan and tilt movement - the camera moves by relative movement commands and does not report a pan or tilt position.
 
 - :ControlPanel: is the small panel of :MeetUp2Remote: that opens from the menu bar icon and contains the controls for :MeetUpCamera:.
 
-- :CameraControlLink: is the component of :MeetUp2Remote: that reads and adjusts the zoom, pan, and tilt controls of :MeetUpCamera: over USB.
+- :CameraControlLink: is the component of :MeetUp2Remote: that reads and adjusts the zoom of :MeetUpCamera: and moves its pan and tilt through relative movement commands over USB.
 
 ***implementation reqs***
 
@@ -42,7 +41,7 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - The vendor ID is read from the device's IORegistry property `idVendor` and the product name from the IORegistry property `USB Product Name` (via `IORegistryEntryCreateCFProperty`); the registry entry name must not be used for matching.
   - For reference, the live device reports `USB Product Name` = "Logi MeetUp 2" and `idVendor` = 0x046D.
 
-- :CameraControlLink: must perform real UVC control transfers against the camera's video control interface for every read (GET_CUR, GET_MIN, GET_MAX) and write (SET_CUR) of zoom, pan, and tilt.
+- :CameraControlLink: must perform real UVC control transfers against the camera's video control interface for every zoom read (GET_CUR, GET_MIN, GET_MAX) and write (SET_CUR) and for every pan/tilt relative movement command.
   - Returning simulated, hard-coded, or placeholder values in place of actual device communication is not acceptable in the real device-layer implementation; only the fake camera used by tests may simulate values.
   - The interface addressing, request codes, control selectors, value layouts, and unit-ID discovery are defined in [uvc-control-protocol.yaml](resources/uvc-control-protocol.yaml).
 
@@ -70,7 +69,7 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 
 - :MeetUp2Remote: has an entry point. When launched, its icon appears in the macOS menu bar and no Dock icon is shown.
 
-  - Clicking the menu bar icon opens :ControlPanel:; clicking it again closes :ControlPanel:.
+- Clicking the menu bar icon opens :ControlPanel:; clicking it again closes :ControlPanel:.
 
 - At launch, :MeetUp2Remote: detects the first attached Logitech MeetUp 2 and treats it as the :MeetUpCamera:.
   - :ControlPanel: displays the connection state of :MeetUpCamera:: "Connected" when a camera is found, "No camera found" otherwise.
@@ -87,8 +86,8 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 
   - With a physical Logitech MeetUp 2 attached over USB, :CameraControlLink: reads the zoom value and range from the live device (not from the fake camera): the zoom range minimum is strictly smaller than its maximum, the current zoom value lies within the range, and the device reports the relative pan/tilt movement control as supported.
 
-- While :MeetUpCamera: is connected, :ControlPanel: displays its current zoom, pan, and tilt values as provided by :CameraControlLink:.
-  - While no camera is connected, no values are displayed.
+- While :MeetUpCamera: is connected, :ControlPanel: displays its current zoom value as provided by :CameraControlLink:.
+  - While no camera is connected, no value is displayed.
 
 - :ControlPanel: contains a zoom slider.
   - The slider spans the zoom range reported by :CameraControlLink:.
@@ -97,11 +96,11 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - The slider is disabled while no camera is connected.
 
 - :ControlPanel: contains a directional pad with up, down, left, and right buttons.
-  - Pressing left or right changes the pan of :MeetUpCamera: by one step in that direction via :CameraControlLink:.
-  - Pressing up or down changes the tilt of :MeetUpCamera: by one step in that direction via :CameraControlLink:.
-  - One step is 1/20 of the valid range of the control being changed, as reported by :CameraControlLink:.
-  - A step that would exceed the valid range is clamped to the range boundary.
-  - The displayed pan and tilt values update after each press.
+  - Pressing left or right moves the pan of :MeetUpCamera: by issuing one short relative movement pulse in that direction via :CameraControlLink:.
+  - Pressing up or down moves the tilt of :MeetUpCamera: by issuing one short relative movement pulse in that direction via :CameraControlLink:.
+  - A movement pulse starts the movement in the chosen direction and stops it after a short fixed duration; the camera enforces its own movement limits.
+  - Issuing a movement pulse is a single operation whose completion can be awaited; the operation completes only after the stop command has been issued, so a caller that awaits it deterministically observes both the start and the stop.
+  - No pan or tilt position is displayed or tracked.
   - The directional pad is disabled while no camera is connected.
 
-- :ControlPanel: arranges its elements vertically, top to bottom: the connection state, the current zoom, pan, and tilt values, the zoom slider, and the directional pad.
+- :ControlPanel: arranges its elements vertically, top to bottom: the connection state, the current zoom value, the zoom slider, and the directional pad.
