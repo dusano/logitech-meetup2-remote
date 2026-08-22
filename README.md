@@ -1,8 +1,8 @@
 # MeetUp2 Remote
 
-A native macOS menu bar app for controlling the zoom and pan/tilt of a Logitech MeetUp 2 conference camera over USB.
+A native macOS menu bar app for controlling the zoom and pan/tilt of a [Logitech MeetUp 2](https://www.logitech.com/en-eu/products/video-conferencing/conference-cameras/meetup2.html) conference camera over USB.
 
-Logitech has no app to drive the MeetUp 2's camera controls. MeetUp2 Remote lives in the menu bar: click the icon, and a small panel shows the camera's connection state and current zoom, with a zoom slider and a directional pad for pan/tilt. Changes take effect immediately in whatever app is using the camera.
+[Logitech](https://www.logitech.com/) has no app to drive the MeetUp 2's camera controls. MeetUp2 Remote lives in the menu bar: click the icon, and a small panel shows the camera's connection state and current zoom, with a zoom slider and a directional pad for pan/tilt. Changes take effect immediately in whatever app is using the camera.
 
 ![MeetUp2 Remote](Meetup2%20Remote.png)
 
@@ -22,29 +22,39 @@ Logitech has no app to drive the MeetUp 2's camera controls. MeetUp2 Remote live
 
 ## Running
 
-### From a packaged build
+This a demo of [***plain](https://www.plainlang.org/): you generate the app's code from the spec yourself, then run it.
 
-Unzip `MeetUp2Remote.zip`, then right-click `MeetUp2Remote.app` → **Open** (needed once — the bundle is ad-hoc signed). The icon appears in the menu bar.
+### 1. Render the app
 
-### From source
+Install the `codeplain` renderer (instructions at [codeplain.ai](https://codeplain.ai)), then run from the repository root:
+
+```bash
+codeplain meetup2_remote.plain
+```
+
+This generates the Swift code of the app into `dist/`.
+
+### 2. Run it
 
 ```bash
 cd dist
 swift run
 ```
 
-### Packaging
+The icon appears in the menu bar.
+
+### 3. Package it (optional)
 
 ```bash
 cd dist
 ./package.sh
 ```
 
-Produces `release/MeetUp2Remote.app` and `release/MeetUp2Remote.zip`, release-built and ad-hoc signed.
+Produces `release/MeetUp2Remote.app` and `release/MeetUp2Remote.zip`, release-built and ad-hoc signed. To run the packaged app, unzip `MeetUp2Remote.zip`, then right-click `MeetUp2Remote.app` → **Open** (needed once — the bundle is ad-hoc signed).
 
 ## How this project is built
 
-This repository is a [***plain](https://codeplain.ai) project: the source is in `meetup2_remote.plain`, and the Swift code is generated from it by the `codeplain` renderer.
+This repository is a [***plain](https://codeplain.ai) project: the source is in `meetup2_remote.plain`, and the Swift code is generated from it by the `codeplain` renderer (see [Running](#running) above).
 
 ```
 meetup2_remote.plain              # the specification (concepts, requirements, functional specs)
@@ -56,15 +66,6 @@ plain_modules/                   # generated code + conformance tests
 dist/                            # the latest successfully rendered app
 dist/release/                    # packaged distribution artifacts (produced by dist/package.sh)
 ```
-
-Render with:
-
-```bash
-codeplain meetup2_remote.plain
-```
-
-To install the `codeplain` renderer, follow the instructions at [codeplain.ai](https://codeplain.ai).
-
 
 ## Hardware notes
 
