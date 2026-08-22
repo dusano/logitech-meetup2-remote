@@ -1,0 +1,9 @@
+---
+description: "MacOS menu bar app boilerplate."
+import:
+  - swift-macos-menu-bar-app-template
+---
+
+***functional specs***
+
+- :MacOSMenuBarApp: has an entry point. When launched, its icon appears in the macOS menu bar and no Dock icon is shown.

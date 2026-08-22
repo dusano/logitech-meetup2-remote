@@ -1,5 +1,7 @@
 ---
 description: MeetUp2 Remote is a native macOS app that controls the zoom and pan/tilt of a connected Logitech MeetUp 2 camera over USB.
+requires:
+  - swift-macos-menu-bar-app-boilerplate
 import:
   - swift-macos-menu-bar-app-template
 ---
@@ -53,8 +55,6 @@ import:
   - Exception: acceptance tests that explicitly state they run against a physical Logitech MeetUp 2 use the real device layer over USB; they require the camera to be attached and fail (never skip) when it is absent.
 
 ***functional specs***
-
-- :MeetUp2Remote: has an entry point. When launched, its icon appears in the macOS menu bar and no Dock icon is shown.
 
 - Clicking the menu bar icon opens :ControlPanel:; clicking it again closes :ControlPanel:.
 
