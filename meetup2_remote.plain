@@ -1,12 +1,13 @@
 ---
 description: MeetUp2 Remote is a native macOS app that controls the zoom and pan/tilt of a connected Logitech MeetUp 2 camera over USB.
+import:
+  - swift-macos-menu-bar-app-template
 ---
 
 ***definitions***
 
-- :MeetUp2Remote: is a native macOS menu bar app that controls the zoom and pan/tilt of a connected Logitech MeetUp 2 camera over USB.
-  - It lives in the macOS menu bar; clicking its menu bar icon opens a small panel with the camera controls.
-  - It has no Dock icon.
+- :MeetUp2Remote: is :MacOSMenuBarApp: that controls the zoom and pan/tilt of a connected Logitech MeetUp 2 camera over USB.
+  - clicking its menu bar icon opens a small panel with the camera controls.
   - It controls a single MeetUp 2 at a time; when several are attached, it controls the first one it detects and ignores the others.
 
 - :MeetUpCamera: represents the Logitech MeetUp 2 camera attached to the Mac over USB and controlled by :MeetUp2Remote:. :MeetUpCamera: has:
@@ -21,15 +22,9 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
 
 ***implementation reqs***
 
-- :Implementation: should be in Swift.
-
-- :Implementation: should target macOS 14 as the minimum deployment version.
-
-- :Implementation: should use SwiftUI for the user interface, with the menu bar icon and :ControlPanel: implemented as a MenuBarExtra scene.
+- The menu bar icon and :ControlPanel: should be implemented as a MenuBarExtra scene.
 
 - :CameraControlLink: should communicate with :MeetUpCamera: using Apple's IOKit USB APIs, sending standard USB Video Class (UVC) control requests (GET_CUR, GET_MIN, GET_MAX, SET_CUR) to the camera's video control interface for the zoom, pan, and tilt controls. No third-party USB or UVC libraries should be used.
-
-- :Implementation: should be a Swift Package Manager project with a Package.swift manifest, built with `swift build` and tested with `swift test`; the app is an executable target.
 
 - :Implementation: should be organized in two layers: a device layer containing :CameraControlLink: and camera detection behind a Swift protocol, and a UI layer containing the SwiftUI views and a single observable view model that mediates between :ControlPanel: and the device layer.
   - The protocol seam allows substituting a fake camera implementation in tests.
@@ -50,17 +45,9 @@ description: MeetUp2 Remote is a native macOS app that controls the zoom and pan
   - When any detection step fails, the logged failure names the step, so a "not connected" outcome is always attributable to a specific step.
   - Diagnostic logging of failures on standard error is required, never suppressed.
 
-- :UnitTests: should use the Swift Testing framework (`import Testing`, `@Test` functions) and live in the package's test target.
-
 - :UnitTests: should exercise the view model and control logic against a fake camera implementation substituted through the device-layer protocol; they must not touch IOKit or real USB hardware.
 
 ***test reqs***
-
-- :ConformanceTests: should be implemented using the Swift Testing framework (`import Testing`, `@Test` functions).
-
-- :ConformanceTests: will be run using the `swift test` command.
-
-- :ConformanceTests: must be implemented and executed - do not skip tests.
 
 - :ConformanceTests: must not require a real camera, IOKit access, or a display; they exercise the specified behavior through the device-layer protocol using the fake camera implementation.
   - Exception: acceptance tests that explicitly state they run against a physical Logitech MeetUp 2 use the real device layer over USB; they require the camera to be attached and fail (never skip) when it is absent.

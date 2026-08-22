@@ -1,0 +1,29 @@
+---
+description: "***plain import module specifying how MacOS menu bar apps should be implemented and tested."
+---
+
+***definitions***
+
+- :MacOSMenuBarApp: is a native macOS menu bar app.
+  - It lives in the macOS menu bar.
+  - It has no Dock icon.
+
+***implementation reqs***
+
+- :Implementation: should be in Swift.
+
+- :Implementation: should target macOS 14 as the minimum deployment version.
+
+- :Implementation: should use SwiftUI for the user interface.
+
+- :Implementation: should be a Swift Package Manager project with a Package.swift manifest, built with `swift build` and tested with `swift test`; the app is an executable target.
+
+- :UnitTests: should use the Swift Testing framework (`import Testing`, `@Test` functions) and live in the package's test target.
+
+***test reqs***
+
+- :ConformanceTests: should be implemented using the Swift Testing framework (`import Testing`, `@Test` functions).
+
+- :ConformanceTests: will be run using the `swift test` command.
+
+- :ConformanceTests: must be implemented and executed - do not skip tests.
